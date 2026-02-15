@@ -5,10 +5,12 @@ from google import genai
 import io
 import re
 import os
+from datetime import datetime
 
 # --- DOCUMENT GENERATION ENGINE ---
-def render_cv_template(template_file, data_map):
-    temp_path = "temp_template.docx"
+def render_template(template_file, data_map):
+    """Fills a .docx template and returns the stream."""
+    temp_path = "temp_render.docx"
     with open(temp_path, "wb") as f:
         f.write(template_file.getbuffer())
     
@@ -21,102 +23,125 @@ def render_cv_template(template_file, data_map):
     
     if os.path.exists(temp_path):
         os.remove(temp_path)
-        
     return output_stream
 
-# --- ROBUST CLEANING LOGIC ---
+# --- CLEANING LOGIC ---
 def clean_ai_text(text):
-    # Removes headers like "1. SUMMARY:", "SKILLS:", "[SUMMARY]", etc.
-    text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|PROFESSIONAL SUMMARY)(\])?[:\- \t]*', '', text.strip())
-    # Strip markdown and excessive symbols
+    """Removes headers like '1. SUMMARY', '[SKILLS]', and markdown artifacts."""
+    text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|COVER LETTER|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
     text = re.sub(r'[\*\^#]', '', text)
-    text = text.strip().replace("  ", " ")
-    return text
+    return text.strip()
 
 # --- STREAMLIT UI ---
-st.set_page_config(page_title="AI CV Architect", layout="wide")
+st.set_page_config(page_title="Career Suite Architect", layout="wide")
 
 with st.sidebar:
-    st.header("API Configuration")
+    st.header("1. API & Templates")
     if "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
-        st.success("API Key active.")
     else:
         api_key = st.text_input("Gemini API Key", type="password")
     
-    docx_template = st.file_uploader("Upload .docx Template", type="docx")
-    st.caption("Required Tags: {{ name }}, {{ email }}, {{ phone }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}")
+    cv_template_file = st.file_uploader("Upload CV Template (.docx)", type="docx")
+    cl_template_file = st.file_uploader("Upload Cover Letter Template (.docx)", type="docx")
 
-st.title("💼 AI CV Architect")
+st.title("💼 AI Career Suite Architect")
 
-with st.expander("Candidate Information", expanded=True):
+with st.expander("Application Identity", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
         name = st.text_input("Full Name", "Rimantas Buivydas")
         email = st.text_input("Email", "rimvntas59@gmail.com")
     with c2:
         phone = st.text_input("Phone", "+44 7783 949991")
-        linkedin = st.text_input("LinkedIn URL", "linkedin.com/in/rimantas-buivydas/")
+        company_name = st.text_input("Target Company", "e.g. London Law Firm")
     with c3:
-        github = st.text_input("GitHub URL", "github.com/rbuivydas")
-        company_name = st.text_input("Company Name (for filename)", "TargetCompany")
+        target_role = st.text_input("Target Role", "IT Service Desk Analyst")
+        linkedin = st.text_input("LinkedIn URL", "linkedin.com/in/rimantas-buivydas/")
 
 st.markdown("---")
-
 col_a, col_b = st.columns(2)
 with col_a:
-    master_cv = st.file_uploader("1. Upload Master CV (PDF)", type="pdf")
+    uploaded_cv = st.file_uploader("Upload Master CV (PDF)", type="pdf")
 with col_b:
-    job_desc = st.text_area("2. Paste Job Description", height=200)
+    job_desc = st.text_area("Paste Job Description", height=200)
 
-if st.button("🚀 Generate Tailored Content"):
-    if not all([api_key, docx_template, master_cv, job_desc]):
-        st.error("Please fill in all fields.")
+if st.button("🚀 Generate Professional Suite"):
+    if not all([api_key, cv_template_file, uploaded_cv, job_desc]):
+        st.error("Please provide API Key, CV Template, Master CV, and Job Description.")
     else:
         client = genai.Client(api_key=api_key)
-        pdf_reader = PyPDF2.PdfReader(master_cv)
+        pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Processing tailored content..."):
-            prompt = f"Act as a Senior Resume Writer. Tailor a summary and skills list for {company_name}. Split sections with '==='. Part 1: Summary prose. Part 2: Skills comma-list. No titles. CV: {cv_raw_text} JOB: {job_desc}"
+        with st.spinner("Crafting tailored documents..."):
+            prompt = f"""
+            Act as a Senior Career Consultant. Create content for {name} applying to {company_name} for the {target_role} role.
+            Split into 3 parts using '===':
+            1. Professional Summary (3-4 sentences).
+            2. Technical Skills (comma-separated list).
+            3. A full, persuasive Cover Letter.
+            
+            NO titles like '1. Summary' or 'Cover Letter:'. Just the prose.
+            CV Data: {cv_raw_text}
+            Job Desc: {job_desc}
+            """
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-            sections = response.text.split("===")
+            parts = response.text.split("===")
             
-            summary_val = clean_ai_text(sections[0]) if len(sections) > 0 else ""
-            skills_val = clean_ai_text(sections[1]) if len(sections) > 1 else ""
+            # Sanitizing AI output
+            summary_val = clean_ai_text(parts[0]) if len(parts) > 0 else ""
+            skills_val = clean_ai_text(parts[1]) if len(parts) > 1 else ""
+            cl_body_val = clean_ai_text(parts[2]) if len(parts) > 2 else ""
 
-            # --- PREVIEW TOGGLE ---
-            st.markdown("### 🔍 Content Review")
-            if st.checkbox("Show Preview of Cleaned Text"):
-                p_col1, p_col2 = st.columns(2)
-                with p_col1:
-                    st.info("**Tailored Summary**")
-                    st.write(summary_val)
-                with p_col2:
-                    st.info("**Tailored Skills**")
-                    st.write(skills_val)
+            # PREVIEW
+            st.markdown("### 🔍 Content Preview")
+            p1, p2 = st.columns(2)
+            with p1:
+                st.info("**Tailored Summary**")
+                st.write(summary_val)
+            with p2:
+                st.info("**Skills List**")
+                st.write(skills_val)
+            st.info("**Cover Letter Preview**")
+            st.write(cl_body_val)
 
-            cv_data = {
-                'name': name.upper(), 'phone': phone, 'email': email,
-                'linkedin': linkedin, 'github': github,
-                'summary': summary_val, 'skills': skills_val
-            }
+            # Data Mapping
+            safe_name = name.replace(' ', '_')
+            safe_company = re.sub(r'[^\w\s-]', '', company_name).strip().replace(' ', '_')
+            today_date = datetime.now().strftime("%B %d, %Y")
 
             try:
-                final_docx = render_cv_template(docx_template, cv_data)
+                # 1. Generate CV
+                cv_data = {
+                    'name': name.upper(), 'phone': phone, 'email': email,
+                    'linkedin': linkedin, 'github': "github.com/rbuivydas",
+                    'summary': summary_val, 'skills': skills_val
+                }
+                final_cv = render_template(cv_template_file, cv_data)
                 
-                # --- DYNAMIC FILENAME ---
-                safe_company = re.sub(r'[^\w\s-]', '', company_name).strip().replace(' ', '_')
-                safe_name = name.replace(' ', '_')
-                final_filename = f"{safe_name}_{safe_company}_CV.docx"
-
-                st.success(f"CV for {company_name} is ready!")
                 st.download_button(
-                    label=f"📥 Download {final_filename}",
-                    data=final_docx,
-                    file_name=final_filename,
+                    label=f"📥 Download {safe_name}_{safe_company}_CV.docx",
+                    data=final_cv,
+                    file_name=f"{safe_name}_{safe_company}_CV.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+                # 2. Generate Cover Letter
+                if cl_template_file:
+                    cl_data = {
+                        'name': name, 'company': company_name, 'role': target_role,
+                        'date': today_date, 'letter_body': cl_body_val
+                    }
+                    final_cl = render_template(cl_template_file, cl_data)
+                    
+                    st.download_button(
+                        label=f"📥 Download {safe_name}_{safe_company}_CoverLetter.docx",
+                        data=final_cl,
+                        file_name=f"{safe_name}_{safe_company}_CoverLetter.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Generation Error: {e}")
