@@ -98,6 +98,10 @@ if st.button("🚀 Generate Professional Suite"):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {target_role} role at {company_name}.
+
+            STRICT LANGUAGE RULE: 
+            Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
+            Localise all terminology for the UK job market.
             
             YOU MUST PROVIDE EXACTLY 4 PARTS SEPARATED BY '===':
             PART 1: A professional summary in FIRST PERSON ('I'). 3-4 sentences.
