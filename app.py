@@ -24,6 +24,19 @@ def render_cv_template(template_file, data_map):
         
     return output_stream
 
+# --- ROBUST CLEANING LOGIC ---
+def clean_ai_text(text):
+    # 1. Remove common AI headers like "1. SUMMARY:", "SKILLS:", "[SUMMARY]", "SECTION 1:", etc.
+    # This regex looks for numbering and titles at the start of the text block
+    text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|PROFESSIONAL SUMMARY)(\])?[:\- \t]*', '', text.strip())
+    
+    # 2. Strip out all markdown symbols (*, #, ^, **)
+    text = re.sub(r'[\*\^#]', '', text)
+    
+    # 3. Clean up leading/trailing whitespace and ensure single spacing
+    text = text.strip().replace("  ", " ")
+    return text
+
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="Pro Template Tailor", layout="wide")
 
@@ -36,10 +49,10 @@ with st.sidebar:
         api_key = st.text_input("Gemini API Key", type="password")
     
     docx_template = st.file_uploader("2. Upload .docx Template", type="docx")
-    st.caption("Template must use: {{ name }}, {{ email }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}, {{ phone }}")
+    st.caption("Template tags: {{ name }}, {{ email }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}, {{ phone }}")
 
-st.title("💼 AI Template Architect")
-st.write("Tailoring your CV using your custom Word template for a high-end corporate finish.")
+st.title("💼 AI CV Architect")
+st.write("Tailoring your CV with zero AI artifacts for a human-written feel.")
 
 with st.expander("Candidate Information", expanded=True):
     c1, c2, c3 = st.columns(3)
@@ -62,50 +75,42 @@ with col_b:
 
 if st.button("🚀 Generate Tailored Template"):
     if not all([api_key, docx_template, master_cv, job_desc]):
-        st.error("Missing required inputs: API Key, Template, Master CV, or Job Description.")
+        st.error("Missing required inputs.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(master_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("AI is populating your template fields..."):
-            # REFINED PROMPT for image 2 style layout
+        with st.spinner("AI is generating clean prose..."):
             prompt = f"""
-            Act as a Senior Resume Writer. Tailor the content for an IT Service Desk Analyst role.
+            Act as a Senior Resume Writer. Tailor the CV for an IT Service Desk Analyst role.
             
-            OUTPUT SECTIONS (Separate using EXACTLY '==='):
-            1. [SUMMARY SECTION]: A single paragraph of 3-5 high-impact, professional sentences. 
-            Do NOT include a title. No bullet points. Just straight prose.
-            
-            2. [SKILLS SECTION]: A single, dense comma-separated list of technical skills. 
-            Do NOT use bullet points, categories, or headers. Just one continuous line of skills.
+            STRICT OUTPUT FORMAT (Separate sections with EXACTLY '==='):
+            1. Provide ONLY a single paragraph of professional prose for the summary. 
+               Do NOT include any titles, labels, or numbering.
+            2. Provide ONLY a single continuous comma-separated list of technical skills. 
+               Do NOT include labels or bullet points.
 
-            RULES:
-            - DO NOT include titles like 'Summary' or 'Skills' in the sections.
-            - DO NOT use any markdown (*, #, **, ^).
-            - Use professional, natural language sentences.
-            
             CV: {cv_raw_text}
             JOB: {job_desc}
             """
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-            output = response.text
+            sections = response.text.split("===")
             
-            sections = output.split("===")
-            
-            # Helper function to strip unwanted AI headers/labels
-            def clean_text(text):
-                # Removes bolding, labels like "SUMMARY:", "SKILLS:", and leading symbols
-                t = re.sub(r'(?i)^(SUMMARY|SKILLS|SECTION \d+|ITEM \d+):?\s*', '', text.strip())
-                t = re.sub(r'[\*\^#]', '', t)
-                return t.strip()
+            # Apply the cleaning filter to the AI output
+            summary_val = clean_ai_text(sections[0]) if len(sections) > 0 else ""
+            skills_val = clean_ai_text(sections[1]) if len(sections) > 1 else ""
 
-            summary_val = clean_text(sections[0]) if len(sections) > 0 else ""
-            # If AI added extra split markers, we look for the next available non-empty block
-            skills_val = clean_text(sections[1]) if len(sections) > 1 else ""
-            if not skills_val and len(sections) > 2:
-                 skills_val = clean_text(sections[2])
+            # --- PREVIEW SECTION ---
+            st.markdown("### 🔍 Content Preview")
+            p_col1, p_col2 = st.columns(2)
+            with p_col1:
+                st.info("**Cleaned Summary:**")
+                st.write(summary_val)
+            with p_col2:
+                st.info("**Cleaned Skills:**")
+                st.write(skills_val)
 
             cv_data = {
                 'name': name.upper(),
@@ -119,11 +124,15 @@ if st.button("🚀 Generate Tailored Template"):
 
             try:
                 final_docx = render_cv_template(docx_template, cv_data)
-                st.success("Resume populated and styled!")
+                st.success("Template populated successfully!")
+                
+                # Dynamic professional filename
+                file_label = f"{name.replace(' ', '_')}_Tailored_CV.docx"
+                
                 st.download_button(
                     label="📥 Download Tailored Resume (.docx)",
                     data=final_docx,
-                    file_name=f"{name.replace(' ', '_')}_Tailored_CV.docx",
+                    file_name=file_label,
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             except Exception as e:
