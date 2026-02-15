@@ -1,0 +1,5 @@
+streamlit
+fpdf
+PyPDF2
+google-genai
+pandas
