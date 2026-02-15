@@ -28,14 +28,18 @@ def render_template(template_file, data_map):
 # --- CLEANING LOGIC ---
 def clean_ai_text(text):
     """Removes common AI headers and markdown artifacts."""
+    if not text:
+        return ""
+    # Removes headers like '1. SUMMARY', 'SKILLS:', etc.
     text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|COVER LETTER|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
+    # Removes bolding (**) and other markdown symbols
     text = re.sub(r'[\*\^#]', '', text)
     return text.strip()
 
 # --- UI CONFIGURATION ---
 st.set_page_config(page_title="Career Suite Architect", layout="wide")
 
-# Initialize Session State to keep files persistent
+# Initialize Session State
 if 'cv_blob' not in st.session_state:
     st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state:
@@ -54,6 +58,11 @@ with st.sidebar:
     
     cv_template_file = st.file_uploader("Upload CV Template (.docx)", type="docx")
     cl_template_file = st.file_uploader("Upload Cover Letter Template (.docx)", type="docx")
+    
+    if st.button("🗑️ Reset Application"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 st.title("💼 AI Career Suite Architect")
 
@@ -84,34 +93,42 @@ if st.button("🚀 Generate Professional Suite"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Optimizing and Generating..."):
+        with st.spinner("Analyzing and segmenting content correctly..."):
+            # Refined prompt with strict index markers to prevent section bleed
             prompt = f"""
-            Act as a Senior Career Consultant and ATS Expert. 
-            Create content for {name} applying for {target_role} at {company_name}.
+            Act as a Senior Resume Writer and ATS Expert. 
+            Create content for {name} applying for the {target_role} role at {company_name}.
             
-            STRICT RULES:
-            - Split with '==='.
-            - Part 1 (Summary): 1st person ('I', 'My'), 3-4 sentences. No titles.
-            - Part 2 (Skills): Comma-separated technical keywords found in both the job and CV. No titles.
-            - Part 3 (Cover Letter): Full 1st person letter.
-            - Part 4 (Match Analysis): List 5 key matched keywords and an ATS % score.
+            YOU MUST PROVIDE EXACTLY 4 PARTS SEPARATED BY '===':
+            PART 1: A professional summary in FIRST PERSON ('I'). 3-4 sentences.
+            PART 2: A comma-separated list of ATS-optimized technical skills.
+            PART 3: A full first-person cover letter.
+            PART 4: A brief ATS match analysis (Keywords & % Score).
             
+            STRICT: Do not include labels like 'PART 1' or 'Summary:' in the content.
             CV: {cv_raw_text}
             JOB: {job_desc}
             """
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-            parts = response.text.split("===")
+            parts = [p.strip() for p in response.text.split("===")]
             
-            # Store everything in session state
-            summary = clean_ai_text(parts[0])
-            skills = clean_ai_text(parts[1])
-            cl_body = clean_ai_text(parts[2])
-            st.session_state.match_details = parts[3] if len(parts) > 3 else "N/A"
+            # Failsafe Mapping: Ensure we don't pick up empty strings or labels
+            summary_raw = parts[0] if len(parts) > 0 else ""
+            skills_raw = parts[1] if len(parts) > 1 else ""
+            cl_body_raw = parts[2] if len(parts) > 2 else ""
+            match_raw = parts[3] if len(parts) > 3 else "Analysis unavailable."
 
-            # Prepare Files
+            # Clean and store
+            summary = clean_ai_text(summary_raw)
+            skills = clean_ai_text(skills_raw)
+            cl_body = clean_ai_text(cl_body_raw)
+            st.session_state.match_details = clean_ai_text(match_raw)
+
+            # Generate Document Filename
             st.session_state.file_base = f"{name.replace(' ', '_')}_{company_name.replace(' ', '_')}"
             
+            # --- DATA MAPPING ---
             cv_data = {
                 'name': name.upper(), 'phone': phone, 'email': email,
                 'linkedin': linkedin, 'github': "github.com/rbuivydas",
@@ -126,22 +143,20 @@ if st.button("🚀 Generate Professional Suite"):
                 }
                 st.session_state.cl_blob = render_template(cl_template_file, cl_data)
 
-# --- DISPLAY PERSISTENT RESULTS ---
+# --- PERSISTENT DISPLAY ---
 if st.session_state.cv_blob:
     st.success(f"Tailored documents for {company_name} are ready!")
     
-    # Keyword Match Analysis Section
     with st.expander("📊 ATS Keyword Match Analysis", expanded=True):
         st.write(st.session_state.match_details)
 
     res_col, cl_col = st.columns(2)
     with res_col:
         st.download_button(
-            label="📥 Download CV (.docx)",
+            label="📥 Download Tailored CV (.docx)",
             data=st.session_state.cv_blob,
             file_name=f"{st.session_state.file_base}_CV.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            key="cv_download"
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     
     if st.session_state.cl_blob:
@@ -150,6 +165,5 @@ if st.session_state.cv_blob:
                 label="📥 Download Cover Letter (.docx)",
                 data=st.session_state.cl_blob,
                 file_name=f"{st.session_state.file_base}_CoverLetter.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key="cl_download"
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
