@@ -1,0 +1,5 @@
+pandoc
+weasyprint
+libpango-1.0-0
+libharfbuzz0b
+libpangoft2-1.0-0
