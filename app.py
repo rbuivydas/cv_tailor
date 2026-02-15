@@ -1,8 +1,5 @@
 import streamlit as st
-try:
-    from docxtpl import DocxTemplate
-except ModuleNotFoundError:
-    st.error("The 'docxtpl' module is missing. Please ensure it is listed in requirements.txt.")
+from docxtpl import DocxTemplate
 import PyPDF2
 from google import genai
 import io
