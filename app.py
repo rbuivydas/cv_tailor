@@ -33,7 +33,7 @@ def render_cv_template(template_file, data_map):
 st.set_page_config(page_title="Pro Template Tailor", layout="wide")
 
 with st.sidebar:
-    st.header("1. Setup")
+    st.header("API Key")
     # Using Gemini API Key
     if "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
