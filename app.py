@@ -28,14 +28,22 @@ def render_template(template_file, data_map):
 # --- CLEANING LOGIC ---
 def clean_ai_text(text):
     """Removes common AI headers and markdown artifacts."""
-    # Removes headers like '1. SUMMARY', 'SKILLS:', etc.
     text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|COVER LETTER|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
-    # Removes bolding (**) and other markdown symbols
     text = re.sub(r'[\*\^#]', '', text)
     return text.strip()
 
-# --- STREAMLIT UI ---
+# --- UI CONFIGURATION ---
 st.set_page_config(page_title="Career Suite Architect", layout="wide")
+
+# Initialize Session State to keep files persistent
+if 'cv_blob' not in st.session_state:
+    st.session_state.cv_blob = None
+if 'cl_blob' not in st.session_state:
+    st.session_state.cl_blob = None
+if 'file_base' not in st.session_state:
+    st.session_state.file_base = ""
+if 'match_details' not in st.session_state:
+    st.session_state.match_details = None
 
 with st.sidebar:
     st.header("1. API & Templates")
@@ -46,7 +54,6 @@ with st.sidebar:
     
     cv_template_file = st.file_uploader("Upload CV Template (.docx)", type="docx")
     cl_template_file = st.file_uploader("Upload Cover Letter Template (.docx)", type="docx")
-    st.info("Template Tags: {{ name }}, {{ email }}, {{ phone }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}, {{ company }}, {{ role }}, {{ date }}, {{ letter_body }}")
 
 st.title("💼 AI Career Suite Architect")
 
@@ -77,78 +84,72 @@ if st.button("🚀 Generate Professional Suite"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Optimizing Skills for ATS and rewriting in First Person..."):
-            # Refined prompt for First Person and ATS Skills Optimization
+        with st.spinner("Optimizing and Generating..."):
             prompt = f"""
-            Act as a Senior Career Consultant and ATS Optimization Expert. 
-            Create content for {name} applying for the {target_role} role at {company_name}.
+            Act as a Senior Career Consultant and ATS Expert. 
+            Create content for {name} applying for {target_role} at {company_name}.
             
-            STRICT INSTRUCTIONS:
-            - Split sections using EXACTLY '==='.
-            - Part 1 (Summary): Write in FIRST PERSON ('I am', 'My'). Avoid third person. Use 3-4 professional sentences.
-            - Part 2 (Skills): Identify the TOP technical keywords from the Job Description that also appear in or are relevant to the applicant's CV. Provide as a comma-separated list.
-            - Part 3 (Cover Letter): A full, first-person persuasive letter.
+            STRICT RULES:
+            - Split with '==='.
+            - Part 1 (Summary): 1st person ('I', 'My'), 3-4 sentences. No titles.
+            - Part 2 (Skills): Comma-separated technical keywords found in both the job and CV. No titles.
+            - Part 3 (Cover Letter): Full 1st person letter.
+            - Part 4 (Match Analysis): List 5 key matched keywords and an ATS % score.
             
-            NO titles, markdown, or numbering.
-            CV Data: {cv_raw_text}
-            Job Desc: {job_desc}
+            CV: {cv_raw_text}
+            JOB: {job_desc}
             """
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            summary_val = clean_ai_text(parts[0]) if len(parts) > 0 else ""
-            skills_val = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body_val = clean_ai_text(parts[2]) if len(parts) > 2 else ""
+            # Store everything in session state
+            summary = clean_ai_text(parts[0])
+            skills = clean_ai_text(parts[1])
+            cl_body = clean_ai_text(parts[2])
+            st.session_state.match_details = parts[3] if len(parts) > 3 else "N/A"
 
-            # PREVIEW
-            st.markdown("### 🔍 Content Preview")
-            p1, p2 = st.columns(2)
-            with p1:
-                st.info("**Tailored Summary (First Person)**")
-                st.write(summary_val)
-            with p2:
-                st.info("**ATS-Optimized Skills**")
-                st.write(skills_val)
+            # Prepare Files
+            st.session_state.file_base = f"{name.replace(' ', '_')}_{company_name.replace(' ', '_')}"
             
-            st.info("**Cover Letter Preview**")
-            st.write(cl_body_val)
+            cv_data = {
+                'name': name.upper(), 'phone': phone, 'email': email,
+                'linkedin': linkedin, 'github': "github.com/rbuivydas",
+                'summary': summary, 'skills': skills
+            }
+            st.session_state.cv_blob = render_template(cv_template_file, cv_data)
 
-            # File Setup
-            safe_name = name.replace(' ', '_')
-            safe_company = re.sub(r'[^\w\s-]', '', company_name).strip().replace(' ', '_')
-            today_date = datetime.now().strftime("%B %d, %Y")
-
-            try:
-                # 1. Generate CV
-                cv_data = {
-                    'name': name.upper(), 'phone': phone, 'email': email,
-                    'linkedin': linkedin, 'github': "github.com/rbuivydas",
-                    'summary': summary_val, 'skills': skills_val
+            if cl_template_file:
+                cl_data = {
+                    'name': name, 'company': company_name, 'role': target_role,
+                    'date': datetime.now().strftime("%B %d, %Y"), 'letter_body': cl_body
                 }
-                final_cv = render_template(cv_template_file, cv_data)
-                
-                st.download_button(
-                    label=f"📥 Download {safe_name}_{safe_company}_CV.docx",
-                    data=final_cv,
-                    file_name=f"{safe_name}_{safe_company}_CV.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                st.session_state.cl_blob = render_template(cl_template_file, cl_data)
 
-                # 2. Generate Cover Letter
-                if cl_template_file:
-                    cl_data = {
-                        'name': name, 'company': company_name, 'role': target_role,
-                        'date': today_date, 'letter_body': cl_body_val
-                    }
-                    final_cl = render_template(cl_template_file, cl_data)
-                    
-                    st.download_button(
-                        label=f"📥 Download {safe_name}_{safe_company}_CoverLetter.docx",
-                        data=final_cl,
-                        file_name=f"{safe_name}_{safe_company}_CoverLetter.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
-                
-            except Exception as e:
-                st.error(f"Generation Error: {e}")
+# --- DISPLAY PERSISTENT RESULTS ---
+if st.session_state.cv_blob:
+    st.success(f"Tailored documents for {company_name} are ready!")
+    
+    # Keyword Match Analysis Section
+    with st.expander("📊 ATS Keyword Match Analysis", expanded=True):
+        st.write(st.session_state.match_details)
+
+    res_col, cl_col = st.columns(2)
+    with res_col:
+        st.download_button(
+            label="📥 Download CV (.docx)",
+            data=st.session_state.cv_blob,
+            file_name=f"{st.session_state.file_base}_CV.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key="cv_download"
+        )
+    
+    if st.session_state.cl_blob:
+        with cl_col:
+            st.download_button(
+                label="📥 Download Cover Letter (.docx)",
+                data=st.session_state.cl_blob,
+                file_name=f"{st.session_state.file_base}_CoverLetter.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key="cl_download"
+            )
