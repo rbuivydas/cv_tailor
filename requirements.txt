@@ -3,3 +3,5 @@ fpdf
 PyPDF2
 google-genai
 pandas
+docxtpl
+weasyprint
