@@ -33,12 +33,13 @@ def render_cv_template(template_file, data_map):
 st.set_page_config(page_title="Pro Template Tailor", layout="wide")
 
 with st.sidebar:
-    st.title("System Config")
-    api_key = st.text_input("Gemini API Key", type="password")
-    # THE TEMPLATE: User must upload a .docx version of the ATS template
-    docx_template = st.file_uploader("📂 Upload .docx Template", type="docx")
-    st.markdown("---")
-    st.info("Ensure your .docx has tags like {{ summary }}, {{ experience }}, etc.")
+    st.header("1. Setup")
+    # Using Gemini API Key
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+        st.success("API Key active.")
+    else:
+        api_key = st.text_input("Gemini API Key", type="password")
 
 st.title("💼 AI Template Architect")
 st.write("Tailoring your CV using your custom Word template for a high-end corporate finish.")
