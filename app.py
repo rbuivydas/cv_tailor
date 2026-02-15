@@ -1,10 +1,20 @@
 import streamlit as st
-from docxtpl import DocxTemplate
+try:
+    from docxtpl import DocxTemplate
+except ModuleNotFoundError:
+    st.error("The 'docxtpl' module is missing. Please ensure it is listed in requirements.txt.")
 import PyPDF2
 from google import genai
 import io
-import re
+import pypandoc
 import os
+
+# --- ACCESSING SECRETS ---
+# In Streamlit Cloud, go to Settings -> Secrets and add: GEMINI_API_KEY = "your_key"
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+else:
+    api_key = st.sidebar.text_input("Gemini API Key", type="password")
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_cv_template(template_file, data_map):
