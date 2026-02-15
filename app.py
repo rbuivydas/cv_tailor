@@ -27,8 +27,10 @@ def render_template(template_file, data_map):
 
 # --- CLEANING LOGIC ---
 def clean_ai_text(text):
-    """Removes headers like '1. SUMMARY', '[SKILLS]', and markdown artifacts."""
+    """Removes common AI headers and markdown artifacts."""
+    # Removes headers like '1. SUMMARY', 'SKILLS:', etc.
     text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|COVER LETTER|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
+    # Removes bolding (**) and other markdown symbols
     text = re.sub(r'[\*\^#]', '', text)
     return text.strip()
 
@@ -44,6 +46,7 @@ with st.sidebar:
     
     cv_template_file = st.file_uploader("Upload CV Template (.docx)", type="docx")
     cl_template_file = st.file_uploader("Upload Cover Letter Template (.docx)", type="docx")
+    st.info("Template Tags: {{ name }}, {{ email }}, {{ phone }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}, {{ company }}, {{ role }}, {{ date }}, {{ letter_body }}")
 
 st.title("💼 AI Career Suite Architect")
 
@@ -64,7 +67,7 @@ col_a, col_b = st.columns(2)
 with col_a:
     uploaded_cv = st.file_uploader("Upload Master CV (PDF)", type="pdf")
 with col_b:
-    job_desc = st.text_area("Paste Job Description", height=200)
+    job_desc = st.text_area("2. Paste Job Description", height=200)
 
 if st.button("🚀 Generate Professional Suite"):
     if not all([api_key, cv_template_file, uploaded_cv, job_desc]):
@@ -74,15 +77,19 @@ if st.button("🚀 Generate Professional Suite"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Crafting tailored documents..."):
+        with st.spinner("Optimizing Skills for ATS and rewriting in First Person..."):
+            # Refined prompt for First Person and ATS Skills Optimization
             prompt = f"""
-            Act as a Senior Career Consultant. Create content for {name} applying to {company_name} for the {target_role} role.
-            Split into 3 parts using '===':
-            1. Professional Summary (3-4 sentences).
-            2. Technical Skills (comma-separated list).
-            3. A full, persuasive Cover Letter.
+            Act as a Senior Career Consultant and ATS Optimization Expert. 
+            Create content for {name} applying for the {target_role} role at {company_name}.
             
-            NO titles like '1. Summary' or 'Cover Letter:'. Just the prose.
+            STRICT INSTRUCTIONS:
+            - Split sections using EXACTLY '==='.
+            - Part 1 (Summary): Write in FIRST PERSON ('I am', 'My'). Avoid third person. Use 3-4 professional sentences.
+            - Part 2 (Skills): Identify the TOP technical keywords from the Job Description that also appear in or are relevant to the applicant's CV. Provide as a comma-separated list.
+            - Part 3 (Cover Letter): A full, first-person persuasive letter.
+            
+            NO titles, markdown, or numbering.
             CV Data: {cv_raw_text}
             Job Desc: {job_desc}
             """
@@ -90,7 +97,6 @@ if st.button("🚀 Generate Professional Suite"):
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Sanitizing AI output
             summary_val = clean_ai_text(parts[0]) if len(parts) > 0 else ""
             skills_val = clean_ai_text(parts[1]) if len(parts) > 1 else ""
             cl_body_val = clean_ai_text(parts[2]) if len(parts) > 2 else ""
@@ -99,15 +105,16 @@ if st.button("🚀 Generate Professional Suite"):
             st.markdown("### 🔍 Content Preview")
             p1, p2 = st.columns(2)
             with p1:
-                st.info("**Tailored Summary**")
+                st.info("**Tailored Summary (First Person)**")
                 st.write(summary_val)
             with p2:
-                st.info("**Skills List**")
+                st.info("**ATS-Optimized Skills**")
                 st.write(skills_val)
+            
             st.info("**Cover Letter Preview**")
             st.write(cl_body_val)
 
-            # Data Mapping
+            # File Setup
             safe_name = name.replace(' ', '_')
             safe_company = re.sub(r'[^\w\s-]', '', company_name).strip().replace(' ', '_')
             today_date = datetime.now().strftime("%B %d, %Y")
