@@ -40,6 +40,9 @@ with st.sidebar:
         st.success("API Key active.")
     else:
         api_key = st.text_input("Gemini API Key", type="password")
+    
+    docx_template = st.file_uploader("2. Upload .docx Template", type="docx")
+    st.caption("Template must use: {{ name }}, {{ email }}, {{ linkedin }}, {{ github }}, {{ summary }}, {{ skills }}, {{ phone }}")
 
 st.title("💼 AI Template Architect")
 st.write("Tailoring your CV using your custom Word template for a high-end corporate finish.")
