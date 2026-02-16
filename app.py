@@ -10,6 +10,7 @@ from datetime import datetime
 
 # --- ADVANCED HUMANISATION ENGINE ---
 def manual_humanizer(text):
+    """Replaces common AI-trigger words with natural British alternatives."""
     replacements = {
         "furthermore": "also,",
         "moreover": "on top of that,",
@@ -30,7 +31,6 @@ def manual_humanizer(text):
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
-    # If it's a string (path), open it; if it's a BytesIO, use it directly
     doc = DocxTemplate(template_input)
     doc.render(data_map)
     output_stream = io.BytesIO()
@@ -50,11 +50,11 @@ st.set_page_config(page_title="Humanised Career Architect", layout="wide")
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
 
-# Initialize Template Variables to prevent NameError
+# Template Variables initialization
 cv_template_source = None
 cl_template_source = None
 
-# Template Selection
+# Template Selection from GitHub folder
 TEMPLATE_DIR = "templates"
 if not os.path.exists(TEMPLATE_DIR):
     os.makedirs(TEMPLATE_DIR)
@@ -117,7 +117,7 @@ if st.button("🚀 Generate Humanised Documents"):
     if not job_desc: errors.append("Job Description")
 
     if errors:
-        st.error(f"Missing required inputs: {', '.join(errors)}")
+        st.error(f"Missing inputs: {', '.join(errors)}")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
@@ -158,21 +158,34 @@ if st.button("🚀 Generate Humanised Documents"):
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
             cl_body = manual_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
-            # Rendering CV
-            cv_data = {'name': name.upper(), 'phone': phone, 'email': email, 'linkedin': linkedin, 'github': "github.com/rbuivydas", 'summary': summary, 'skills': skills}
+            # Map data to tags: {{ name }}, {{ summary }}, etc.
+            cv_data = {
+                'name': name.upper(), 
+                'phone': phone, 
+                'email': email, 
+                'linkedin': linkedin, 
+                'github': "github.com/rbuivydas", 
+                'summary': summary, 
+                'skills': skills
+            }
             st.session_state.cv_blob = render_template(cv_template_source, cv_data)
             
-            # Rendering Cover Letter
             if cl_template_source:
-                cl_data = {'name': name, 'company': company, 'role': role, 'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body}
+                cl_data = {
+                    'name': name, 
+                    'company': company, 
+                    'role': role, 
+                    'date': datetime.now().strftime("%d %B %Y"), 
+                    'letter_body': cl_body
+                }
                 st.session_state.cl_blob = render_template(cl_template_source, cl_data)
 
 # Persistent Display
 if st.session_state.cv_blob:
-    st.success("Documents ready!")
+    st.success("Documents ready! (AI detection bypassed)")
     res_col, cl_col = st.columns(2)
     with res_col:
-        st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_CV.docx")
+        st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
     if st.session_state.cl_blob:
         with cl_col:
-            st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_CoverLetter.docx")
+            st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
