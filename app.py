@@ -121,12 +121,13 @@ if st.button("🚀 Generate Humanised Documents"):
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
-        cv_text = " ".join([p.extract_text() for p in pdf_reader.pages])
+        cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
         with st.spinner("Paraphrasing for human-like flow..."):
+            # FIXED: Variables in prompt now match text_input names (role, company, cv_raw_text)
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
-            Create content for {name} applying for the {target_role} role at {company_name}. 
+            Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style.
 
             STRICT LANGUAGE RULE: 
@@ -137,10 +138,9 @@ if st.button("🚀 Generate Humanised Documents"):
             1. Use 'Burstiness': Vary sentence lengths significantly.
             2. Use 'Perplexity': Use a rich, specific vocabulary but avoid AI cliches like 'tapestry', 'unleash', or 'delve'.
             3. Write in FIRST PERSON. Sound confident but not robotic.
-            4. Use British English (honours, specialised, programme).
 
             FORMAT (4 parts separated by '==='):
-            PART 1: A professional summary in FIRST PERSON ('I'). 3-4 sentences (natural flow)
+            PART 1: A professional summary in FIRST PERSON ('I'). 3-4 sentences (natural flow).
             PART 2: A comma-separated list of ATS-optimized technical skills.
             PART 3: A full first-person cover letter (Persuasive, conversational but professional).
             PART 4: ATS Analysis.
