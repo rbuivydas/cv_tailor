@@ -120,7 +120,7 @@ if st.button("🚀 Generate Humanised Documents"):
         with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
-            Create content for {name} applying for the {target_role} role at {company_name}. 
+            Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style. 
             STRICT: Do NOT write like an AI. Do NOT use structured formatting.
 
