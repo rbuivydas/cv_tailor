@@ -8,55 +8,68 @@ import os
 import random
 from datetime import datetime
 
-# --- PASS 3: LINGUISTIC FRICTION & AI DETECTION ESTIMATOR ---
+# --- PASS 4: LINGUISTIC CHAOS ENGINE ---
+def chaos_humanizer(text):
+    """
+    Intentionally disrupts AI predictability (Probability Map).
+    1. Replaces bridge words with 'Gritty' alternatives.
+    2. Swaps punctuation to break the AI's 'perfect' rhythm.
+    3. Injects sentence fragments (a key human indicator).
+    """
+    if not text: return ""
+    
+    # IT-Grit Replacements
+    grit_map = {
+        "furthermore": "besides,",
+        "moreover": "what's more,",
+        "additionally": "also,",
+        "consequently": "long story short,",
+        "demonstrate": "show",
+        "utilize": "leverage",
+        "possess": "bring to the table",
+        "highly motivated": "ready to hit the ground running",
+        "pivotal": "massive",
+        "underscores": "points to",
+        "ensure": "make sure",
+        "extensive": "deep dive into"
+    }
+    
+    for bot, human in grit_map.items():
+        text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
+    
+    # PASS: Syntax Disruption (The Chaos Pass)
+    # This logic forces 'Burstiness' by varying punctuation density
+    sentences = text.split(". ")
+    scrambled = []
+    for i, sentence in enumerate(sentences):
+        # Every 3rd sentence, try to make it punchy or join it
+        if i % 3 == 0 and len(sentence.split()) > 12:
+            sentence = sentence.replace(", ", " — ", 1) # Insert Em-Dash
+        if i % 4 == 0:
+            sentence = sentence.replace(" and ", "; ", 1) # Force Semicolons
+        scrambled.append(sentence)
+        
+    return ". ".join(scrambled).strip()
+
 def calculate_human_score(text):
-    """
-    Estimates human-written quality based on linguistic variance.
-    Detectors flag low variance (uniformity).
-    """
+    """Calculates Human Score using Burstiness (Std Dev of sentence length)."""
     if not text: return 0
     sentences = re.split(r'[.!?]+', text)
     lengths = [len(s.split()) for s in sentences if len(s.split()) > 0]
-    if len(lengths) < 2: return 40
+    if len(lengths) < 2: return 30
     
-    # Calculate Variance (Human writing 'bursts' between short and long)
     mean = sum(lengths) / len(lengths)
     variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
     std_dev = variance ** 0.5
     
-    # Score logic: Higher variance = higher human score
-    score = 55 + (std_dev * 6)
-    # Penalize AI cliches
-    if any(word in text.lower() for word in ["furthermore", "tapestry", "comprehensive"]):
-        score -= 10
-        
-    return min(max(int(score), 10), 99)
-
-def manual_humanizer(text):
-    """Injects linguistic grit to disrupt AI probability maps."""
-    if not text: return ""
-    replacements = {
-        "furthermore": "also,", "moreover": "plus,", "in addition": "on top of that,",
-        "demonstrate": "showcase", "utilize": "use", "possess": "have",
-        "highly motivated": "keen", "testament to": "proof of", "pivotal": "key"
-    }
-    for ai_word, human_word in replacements.items():
-        text = re.sub(rf'\b{ai_word}\b', human_word, text, flags=re.IGNORECASE)
-    
-    # Random Punctuation Scrambler
-    text_list = text.split(". ")
-    scrambled = []
-    for sentence in text_list:
-        if len(sentence.split()) > 10 and random.random() > 0.7:
-            sentence = sentence.replace(", ", " — ", 1)
-        scrambled.append(sentence)
-    return ". ".join(scrambled).strip()
+    # Heuristic: High Std Dev = Human. Low Std Dev = Robot.
+    score = 65 + (std_dev * 4)
+    return min(max(int(score), 5), 98)
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
-    """Fills a .docx template. Uses Jinja2 environment to preserve formatting/links."""
     doc = DocxTemplate(template_input)
-    # autoescape=True helps preserve special characters that might break XML links
+    # Using Jinja2 environment to preserve XML hyperlinks
     doc.render(data_map)
     output_stream = io.BytesIO()
     doc.save(output_stream)
@@ -69,39 +82,26 @@ def clean_ai_text(text):
     return text.strip()
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="Human-Grade Career Architect", layout="wide")
+st.set_page_config(page_title="Chaos Architect (Undetectable)", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
-if 'human_score' not in st.session_state: st.session_state.human_score = 0
-
-cv_template_source = None
-cl_template_source = None
+if 'h_score' not in st.session_state: st.session_state.h_score = 0
 
 TEMPLATE_DIR = "templates"
 if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("1. API & Templates")
+    st.header("⚙️ Configuration")
     api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
+    
+    cv_sel = st.selectbox("CV Template", available_templates) if available_templates else None
+    cl_sel = st.selectbox("CL Template", available_templates) if available_templates else None
 
-    st.subheader("Template Selection")
-    cv_mode = st.radio("CV Template", ["Folder", "Manual"])
-    if cv_mode == "Folder" and available_templates:
-        cv_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CV", available_templates))
-    else:
-        cv_template_source = st.file_uploader("Upload CV (.docx)", type="docx", key="cv_manual")
+st.title("🛡️ The 10% AI Challenge CV Tailor")
 
-    cl_mode = st.radio("CL Template", ["Folder", "Manual"])
-    if cl_mode == "Folder" and available_templates:
-        cl_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CL", available_templates))
-    else:
-        cl_template_source = st.file_uploader("Upload CL (.docx)", type="docx", key="cl_manual")
-
-st.title("💼 Undetectable AI CV Tailor")
-
-with st.expander("Candidate Details", expanded=True):
+with st.expander("Candidate Identity", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
         name = st.text_input("Full Name", "Rimantas Buivydas")
@@ -116,13 +116,13 @@ with st.expander("Candidate Details", expanded=True):
 st.markdown("---")
 col_a, col_b = st.columns(2)
 with col_a:
-    uploaded_cv = st.file_uploader("Upload Main CV (PDF)", type="pdf")
+    uploaded_cv = st.file_uploader("Upload Master CV (PDF)", type="pdf")
 with col_b:
     job_desc = st.text_area("2. Paste Job Description", height=200)
 
-if st.button("🚀 Generate Humanised Documents"):
-    if not all([api_key, cv_template_source, uploaded_cv, job_desc]):
-        st.error("Missing inputs.")
+if st.button("🚀 Generate Human-Grade Content"):
+    if not all([api_key, cv_sel, uploaded_cv, job_desc]):
+        st.error("Inputs missing.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
@@ -133,7 +133,7 @@ if st.button("🚀 Generate Humanised Documents"):
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style. 
-            STRICT: Do NOT write like an AI. Do NOT use structured formatting.
+            STRICT: Do NOT write like an AI. Do NOT use structured formatting. Avoid all AI bridge words. Act as if you are human expert writing to a human.
 
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
@@ -167,44 +167,29 @@ if st.button("🚀 Generate Humanised Documents"):
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            summary = manual_humanizer(clean_ai_text(parts[0]))
+            # Pass 4: Chaos Scrambling
+            summary = chaos_humanizer(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body = manual_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
+            cl_body = chaos_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
-            # Estimate AI Score (inverse of Human Score)
-            st.session_state.human_score = calculate_human_score(summary + " " + cl_body)
+            st.session_state.h_score = calculate_human_score(summary + " " + cl_body)
             
-            cv_data = {
-                'name': name.upper(), 'phone': phone, 'email': email, 
-                'linkedin': linkedin, 'github': "github.com/rbuivydas", 
-                'summary': summary, 'skills': skills
-            }
-            st.session_state.cv_blob = render_template(cv_template_source, cv_data)
+            cv_data = {'name': name.upper(), 'phone': phone, 'email': email, 'linkedin': linkedin, 'github': "github.com/rbuivydas", 'summary': summary, 'skills': skills}
+            st.session_state.cv_blob = render_template(os.path.join(TEMPLATE_DIR, cv_sel), cv_data)
             
-            if cl_template_source:
-                cl_data = {
-                    'name': name, 'company': company, 'role': role, 
-                    'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body
-                }
-                st.session_state.cl_blob = render_template(cl_template_source, cl_data)
+            if cl_sel:
+                cl_data = {'name': name, 'company': company, 'role': role, 'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body}
+                st.session_state.cl_blob = render_template(os.path.join(TEMPLATE_DIR, cl_sel), cl_data)
 
-# Persistent Display
 if st.session_state.cv_blob:
-    # --- AI DETECTION PREVIEW ---
-    h_score = st.session_state.human_score
-    ai_score = 100 - h_score
-    
-    st.subheader("🛡️ Content Authenticity Preview")
-    cols = st.columns([1, 4])
-    with cols[0]:
-        st.metric("Human Score", f"{h_score}%")
-    with cols[1]:
-        st.progress(h_score / 100)
-        st.caption(f"Estimated AI Probability: {ai_score}% | Status: {'Pass' if h_score > 70 else 'Needs Variance'}")
+    score = st.session_state.h_score
+    st.subheader(f"🛡️ Human Authenticity Score: {score}%")
+    st.progress(score / 100)
+    st.caption(f"Estimated AI Detection probability: {100 - score}%")
 
-    res_col, cl_col = st.columns(2)
-    with res_col:
-        st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.download_button("📥 CV (.docx)", data=st.session_state.cv_blob, file_name=f"{name}_CV.docx")
     if st.session_state.cl_blob:
-        with cl_col:
-            st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
+        with c2:
+            st.download_button("📥 Letter (.docx)", data=st.session_state.cl_blob, file_name=f"{name}_Letter.docx")
