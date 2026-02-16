@@ -8,50 +8,56 @@ import os
 import random
 from datetime import datetime
 
-# --- PASS 3: LINGUISTIC FRICTION & PUNCTUATION SCRAMBLER ---
-def manual_humanizer(text):
+# --- PASS 4: LINGUISTIC FRICTION & DETECTION CALCULATION ---
+def calculate_human_score(text):
     """
-    Manually disrupts the robotic flow of AI by:
-    1. Swapping high-probability transition words.
-    2. Randomly introducing semicolons/dashes to vary rhythm (Burstiness).
-    3. Breaking 'perfect' grammar patterns.
+    Heuristic to estimate human-written vs AI.
+    Checks for sentence length variance (Burstiness).
     """
-    if not text: return ""
+    if not text: return 0
+    sentences = re.split(r'[.!?]+', text)
+    lengths = [len(s.split()) for s in sentences if len(s.split()) > 0]
+    if len(lengths) < 2: return 45
     
-    # IT Grit replacements
+    # Calculate Standard Deviation (Humans vary sentence length more than AI)
+    mean = sum(lengths) / len(lengths)
+    variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
+    std_dev = variance ** 0.5
+    
+    # AI-isms penalty
+    cliches = ["tapestry", "moreover", "furthermore", "comprehensive", "utilize"]
+    penalty = sum(8 for word in cliches if word in text.lower())
+    
+    score = 65 + (std_dev * 4) - penalty
+    return min(max(int(score), 5), 98)
+
+def manual_humanizer(text):
+    """Disrupts robotic flow by swapping bridge words and scrambing punctuation."""
+    if not text: return ""
     replacements = {
-        "furthermore": "also,",
-        "moreover": "what's more,",
-        "in addition": "plus,",
-        "consequently": "so basically,",
-        "demonstrate": "show",
-        "utilize": "use",
-        "possess": "have",
-        "highly motivated": "keen",
-        "testament to": "proof of",
-        "committed to": "focused on",
-        "pivotal": "crucial",
-        "underscores": "hits on",
-        "extensive": "deep",
-        "seeking to": "looking to"
+        "furthermore": "also,", "moreover": "what's more,", "in addition": "plus,",
+        "consequently": "so basically,", "demonstrate": "show", "utilize": "use",
+        "possess": "have", "highly motivated": "keen", "testament to": "proof of",
+        "committed to": "focused on", "pivotal": "crucial"
     }
     for ai_word, human_word in replacements.items():
         text = re.sub(rf'\b{ai_word}\b', human_word, text, flags=re.IGNORECASE)
     
-    # PASS: Punctuation Scrambler (Disrupts probability maps)
-    # Replaces some commas with semicolons or em-dashes randomly
+    # Punctuation Scrambler: Replaces some commas with em-dashes randomly
     text_list = text.split(". ")
     scrambled = []
     for sentence in text_list:
         if len(sentence.split()) > 10 and random.random() > 0.7:
             sentence = sentence.replace(", ", " — ", 1)
         scrambled.append(sentence)
-    
     return ". ".join(scrambled).strip()
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
+    """Fills a .docx template. Using native context to preserve hyperlinks."""
     doc = DocxTemplate(template_input)
+    # The render method in docxtpl preserves existing hyperlinks as long as 
+    # the tags {{ tag }} are not part of the hyperlink text itself.
     doc.render(data_map)
     output_stream = io.BytesIO()
     doc.save(output_stream)
@@ -68,33 +74,27 @@ st.set_page_config(page_title="Human-Grade Career Architect", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
+if 'human_score' not in st.session_state: st.session_state.human_score = 0
 
 cv_template_source = None
 cl_template_source = None
-
 TEMPLATE_DIR = "templates"
 if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("1. API & Templates")
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    else:
-        api_key = st.text_input("Gemini API Key", type="password")
-
-    st.subheader("Template Selection")
+    st.header("1. Settings")
+    api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
+    
     cv_mode = st.radio("CV Template", ["Folder", "Manual"])
     if cv_mode == "Folder" and available_templates:
-        cv_selection = st.selectbox("Select CV", available_templates)
-        cv_template_source = os.path.join(TEMPLATE_DIR, cv_selection)
+        cv_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CV", available_templates))
     else:
         cv_template_source = st.file_uploader("Upload CV (.docx)", type="docx", key="cv_manual")
 
     cl_mode = st.radio("CL Template", ["Folder", "Manual"])
     if cl_mode == "Folder" and available_templates:
-        cl_selection = st.selectbox("Select CL", available_templates)
-        cl_template_source = os.path.join(TEMPLATE_DIR, cl_selection)
+        cl_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CL", available_templates))
     else:
         cl_template_source = st.file_uploader("Upload CL (.docx)", type="docx", key="cl_manual")
 
@@ -127,13 +127,15 @@ if st.button("🚀 Generate Humanised Documents"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-
         with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style. 
             STRICT: Do NOT write like an AI. Do NOT use structured formatting.
+
+            STYLE REFERENCE (Mimic this Perplexity and Burstiness):
+            Sample 1: "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
 
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
@@ -163,7 +165,6 @@ if st.button("🚀 Generate Humanised Documents"):
             CV: {cv_raw_text}
             JOB: {job_desc}
             """
-
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
@@ -171,6 +172,8 @@ if st.button("🚀 Generate Humanised Documents"):
             summary = manual_humanizer(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
             cl_body = manual_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
+            
+            st.session_state.human_score = calculate_human_score(summary + " " + cl_body)
             
             cv_data = {
                 'name': name.upper(), 'phone': phone, 'email': email, 
@@ -186,11 +189,22 @@ if st.button("🚀 Generate Humanised Documents"):
                 }
                 st.session_state.cl_blob = render_template(cl_template_source, cl_data)
 
+# Persistent Display
 if st.session_state.cv_blob:
-    st.success("Human-authentic documents generated!")
-    c1, c2 = st.columns(2)
-    with c1:
+    h_score = st.session_state.human_score
+    ai_score = 100 - h_score
+    
+    st.subheader("🛡️ Content Authenticity Preview")
+    cols = st.columns([1, 4])
+    with cols[0]:
+        st.metric("Human Score", f"{h_score}%")
+    with cols[1]:
+        st.progress(h_score / 100)
+        st.caption(f"Estimated AI Detection probability: {ai_score}%")
+
+    res_col, cl_col = st.columns(2)
+    with res_col:
         st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
     if st.session_state.cl_blob:
-        with c2:
+        with cl_col:
             st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
