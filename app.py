@@ -117,7 +117,13 @@ if st.button("🚀 Generate Humanised CV"):
 
         with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
-            Act as a Senior British Recruitment Expert. Use a 'Human-Written' style.
+            Act as a Senior Resume Writer and ATS Expert. 
+            Create content for {name} applying for the {target_role} role at {company_name}. 
+            Use a 'Human-Written' style.
+
+            STRICT LANGUAGE RULE: 
+            Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
+            Localise all terminology for the UK job market.
             
             DIRECTIONS FOR HUMAN-LIKE FLOW:
             1. Use 'Burstiness': Vary sentence lengths significantly.
@@ -126,10 +132,12 @@ if st.button("🚀 Generate Humanised CV"):
             4. Use British English (honours, specialised, programme).
 
             FORMAT (4 parts separated by '==='):
-            PART 1: Summary (First person, natural flow).
-            PART 2: Skills (Comma separated).
-            PART 3: Cover Letter (Persuasive, conversational but professional).
+            PART 1: A professional summary in FIRST PERSON ('I'). 3-4 sentences (natural flow)
+            PART 2: A comma-separated list of ATS-optimized technical skills.
+            PART 3: A full first-person cover letter (Persuasive, conversational but professional).
             PART 4: ATS Analysis.
+
+            STRICT: Do not include labels like 'PART 1' or 'Summary:' in the content.
 
             CV: {cv_raw_text}
             JOB: {job_desc}
