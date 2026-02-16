@@ -47,7 +47,7 @@ The tool analyses a master CV (PDF), a job description, and user-selected Word t
 ---
 
 ## 📂 Folder Structure
-
+```
 cv_tailor/
 │
 ├── app.py # Main Streamlit application
@@ -67,3 +67,4 @@ cv_tailor/
 │ └── icons/ # Logos or UI icons
 │
 └── .gitignore # Git ignore rules
+```
