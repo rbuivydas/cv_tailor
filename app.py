@@ -11,34 +11,34 @@ from datetime import datetime
 # --- LINGUISTIC SCRAMBLER (Pass 2) ---
 def bypass_scrambler(text):
     """
-    Manually disrupts the 'probability map' that AI detectors use.
-    Replaces predictable AI transitions with higher-perplexity human alternatives.
+    Manually disrupts AI probability patterns to bypass detectors.
+    Swaps robotic transitions for natural human speech rhythms.
     """
     if not text: return ""
     
-    # Mapping 'Bot-speak' to 'Human-speak'
     human_map = {
-        "I possess": "I've got",
-        "demonstrated": "hands-on",
+        "furthermore": "also,",
+        "moreover": "on top of that,",
+        "in addition": "plus,",
+        "consequently": "essentially,",
+        "demonstrate": "showcase",
         "utilize": "work with",
-        "effectively": "well",
-        "highly skilled": "well-versed",
-        "Furthermore": "Also",
-        "Moreover": "On top of that",
-        "In addition": "Plus",
-        "dedicated professional": "specialist",
-        "proven track record": "history of",
-        "excellent": "strong",
-        "ensuring": "making sure",
-        "passionate about": "keen on"
+        "possess": "have",
+        "highly motivated": "keen",
+        "testament to": "proof of",
+        "committed to": "focused on",
+        "pivotal": "crucial",
+        "underscores": "highlights",
+        "ensure": "make sure",
+        "passionate about": "really interested in",
+        "extensive experience": "solid background"
     }
     
     for bot, human in human_map.items():
-        # Case insensitive replacement
         text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
     
-    # Intentional 'Burstiness': Randomly join or break a few sentences to vary rhythm
-    text = text.replace(". ", ".\n\n", 1) # Force a paragraph break early for visual burstiness
+    # Intentional 'Burstiness': Break a few sentences to vary rhythm
+    # Replaces some periods with a more conversational flow
     return text.strip()
 
 # --- DOCUMENT GENERATION ENGINE ---
@@ -51,7 +51,6 @@ def render_template(template_input, data_map):
     return output_stream
 
 def clean_ai_text(text):
-    # Aggressively strip AI labels that trigger detectors
     text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(PART|SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
     text = re.sub(r'[\*\^#]', '', text)
     return text.strip()
@@ -73,21 +72,25 @@ with st.sidebar:
     st.header("1. Settings")
     api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
     
-    cv_mode = st.radio("CV Template", ["Folder", "Manual"])
+    cv_mode = st.radio("CV Template Source", ["Folder", "Manual Upload"])
     if cv_mode == "Folder" and available_templates:
-        cv_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CV", available_templates))
+        cv_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CV Template", available_templates))
     else:
-        cv_template_source = st.file_uploader("Upload CV Template", type="docx", key="cv_m")
+        cv_template_source = st.file_uploader("Upload CV Template (.docx)", type="docx", key="cv_manual")
 
-    cl_mode = st.radio("CL Template", ["Folder", "Manual"])
+    cl_mode = st.radio("Cover Letter Source", ["Folder", "Manual Upload"])
     if cl_mode == "Folder" and available_templates:
-        cl_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CL", available_templates))
+        cl_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CL Template", available_templates))
     else:
-        cl_template_source = st.file_uploader("Upload CL Template", type="docx", key="cl_m")
+        cl_template_source = st.file_uploader("Upload CL Template (.docx)", type="docx", key="cl_manual")
+    
+    if st.button("🗑️ Reset Application"):
+        for key in list(st.session_state.keys()): del st.session_state[key]
+        st.rerun()
 
-st.title("🛡️ Undetectable CV Tailoring Suite")
+st.title("💼 Undetectable AI CV Tailor")
 
-with st.expander("Candidate Identity", expanded=True):
+with st.expander("Candidate Details", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
         name = st.text_input("Full Name", "Rimantas Buivydas")
@@ -102,13 +105,13 @@ with st.expander("Candidate Identity", expanded=True):
 st.markdown("---")
 col_a, col_b = st.columns(2)
 with col_a:
-    uploaded_cv = st.file_uploader("Upload Master CV (PDF)", type="pdf")
+    uploaded_cv = st.file_uploader("Upload Main CV (PDF)", type="pdf")
 with col_b:
     job_desc = st.text_area("2. Paste Job Description", height=200)
 
-if st.button("🚀 Generate High-Human CV"):
+if st.button("🚀 Generate Humanised Documents"):
     if not all([api_key, cv_template_source, uploaded_cv, job_desc]):
-        st.error("Inputs missing.")
+        st.error("Missing inputs.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
@@ -117,12 +120,20 @@ if st.button("🚀 Generate High-Human CV"):
         with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
-            Create content for {name} applying for the {role} role at {company}. 
-            Use a 'Human-Written' style.
+            Create content for {name} applying for the {target_role} role at {company_name}. 
+            Use a 'Human-Written' style. 
+            STRICT: Do NOT write like an AI. Do NOT use structured formatting.
 
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
             Localise all terminology for the UK job market.
+
+            STRICT DETECTION BYPASS INSTRUCTIONS:
+            - AVOID perfect grammar. Use slightly conversational, professional British English.
+            - BURSTINESS: Mix 5-word sentences with 25-word sentences. 
+            - PERPLEXITY: Use specific, technical jargon from my CV. Do not summarize; show.
+            - NO AI CLICHES: Never use 'tapestry', 'passion', 'highly motivated', or 'comprehensive'.
+            - Start the summary with a specific accomplishment, not a general statement.
             
             DIRECTIONS FOR HUMAN-LIKE FLOW:
             1. Use 'Burstiness': Vary sentence lengths significantly.
@@ -141,11 +152,12 @@ if st.button("🚀 Generate High-Human CV"):
             CV: {cv_raw_text}
             JOB: {job_desc}
             """
+
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Pass 2: Manual Scrambling
+            # Applying Pass 2 (Manual Scrambler)
             summary = bypass_scrambler(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
             cl_body = bypass_scrambler(clean_ai_text(parts[2])) if len(parts) > 2 else ""
@@ -165,10 +177,10 @@ if st.button("🚀 Generate High-Human CV"):
                 st.session_state.cl_blob = render_template(cl_template_source, cl_data)
 
 if st.session_state.cv_blob:
-    st.success("Humanised documents ready for download.")
+    st.success("Human-authentic documents generated!")
     c1, c2 = st.columns(2)
     with c1:
-        st.download_button("📥 CV (.docx)", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
+        st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
     if st.session_state.cl_blob:
         with c2:
-            st.download_button("📥 Cover Letter (.docx)", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
+            st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
