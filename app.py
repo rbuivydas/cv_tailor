@@ -8,68 +8,78 @@ import os
 import random
 from datetime import datetime
 
-# --- PASS 4: LINGUISTIC CHAOS ENGINE ---
-def chaos_humanizer(text):
+# --- PASS 5: HIGH-ENTROPY HUMANIZER ---
+def high_entropy_scrambler(text):
     """
-    Intentionally disrupts AI predictability (Probability Map).
-    1. Replaces bridge words with 'Gritty' alternatives.
-    2. Swaps punctuation to break the AI's 'perfect' rhythm.
-    3. Injects sentence fragments (a key human indicator).
+    Directly attacks the 'Smoothness' and 'Uniformity' that AI detectors flag.
+    1. Replaces 'Corporate Bot' transitions with 'Contractor Grit'.
+    2. Injects parentheticals and em-dashes to vary sentence architecture.
+    3. Breaks the perfect rhythm that LLMs naturally default to.
     """
     if not text: return ""
     
-    # IT-Grit Replacements
+    # Grit Replacements: Swapping predictable transitions for lower-probability ones
     grit_map = {
-        "furthermore": "besides,",
-        "moreover": "what's more,",
-        "additionally": "also,",
-        "consequently": "long story short,",
-        "demonstrate": "show",
+        "furthermore": "besides that,",
+        "moreover": "actually, on top of that,",
+        "in addition": "plus,",
+        "consequently": "so, long story short,",
+        "demonstrate": "showcase",
         "utilize": "leverage",
         "possess": "bring to the table",
-        "highly motivated": "ready to hit the ground running",
-        "pivotal": "massive",
-        "underscores": "points to",
+        "highly motivated": "eager to get stuck in",
+        "pivotal": "crucial",
+        "underscores": "really highlights",
         "ensure": "make sure",
-        "extensive": "deep dive into"
+        "extensive": "solid",
+        "proven track record": "decent history of",
+        "excellent": "strong"
     }
     
     for bot, human in grit_map.items():
         text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
-    
-    # PASS: Syntax Disruption (The Chaos Pass)
-    # This logic forces 'Burstiness' by varying punctuation density
+
+    # Passive to Active & Rhythm Breaking
     sentences = text.split(". ")
     scrambled = []
+    
     for i, sentence in enumerate(sentences):
-        # Every 3rd sentence, try to make it punchy or join it
-        if i % 3 == 0 and len(sentence.split()) > 12:
-            sentence = sentence.replace(", ", " — ", 1) # Insert Em-Dash
-        if i % 4 == 0:
-            sentence = sentence.replace(" and ", "; ", 1) # Force Semicolons
+        # Pass: Inject Burstiness
+        words = sentence.split()
+        if i % 3 == 0 and len(words) > 10:
+            # Inject a parenthetical or dash for 'Narrative Friction'
+            mid = len(words) // 2
+            words.insert(mid, "—")
+        
+        # Every 4th sentence, make it intentionally punchy (Human marker)
+        if i % 4 == 0 and len(words) > 5:
+            sentence = " ".join(words[:6]) + "."
+        else:
+            sentence = " ".join(words)
+            
         scrambled.append(sentence)
         
-    return ". ".join(scrambled).strip()
+    return ". ".join(scrambled).strip().replace("..", ".")
 
 def calculate_human_score(text):
-    """Calculates Human Score using Burstiness (Std Dev of sentence length)."""
+    """Measures Burstiness (Standard Deviation of sentence length)."""
     if not text: return 0
     sentences = re.split(r'[.!?]+', text)
     lengths = [len(s.split()) for s in sentences if len(s.split()) > 0]
-    if len(lengths) < 2: return 30
+    if len(lengths) < 2: return 20
     
     mean = sum(lengths) / len(lengths)
     variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
     std_dev = variance ** 0.5
     
-    # Heuristic: High Std Dev = Human. Low Std Dev = Robot.
-    score = 65 + (std_dev * 4)
-    return min(max(int(score), 5), 98)
+    # High standard deviation = Human.
+    score = 70 + (std_dev * 4.5)
+    return min(max(int(score), 5), 99)
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
+    """Renders docx while preserving XML structure for hyperlinks."""
     doc = DocxTemplate(template_input)
-    # Using Jinja2 environment to preserve XML hyperlinks
     doc.render(data_map)
     output_stream = io.BytesIO()
     doc.save(output_stream)
@@ -82,7 +92,7 @@ def clean_ai_text(text):
     return text.strip()
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="Chaos Architect (Undetectable)", layout="wide")
+st.set_page_config(page_title="Chaos Architect v5", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
@@ -93,14 +103,14 @@ if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.header("⚙️ Settings")
     api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
-    
     cv_sel = st.selectbox("CV Template", available_templates) if available_templates else None
     cl_sel = st.selectbox("CL Template", available_templates) if available_templates else None
 
-st.title("🛡️ The 10% AI Challenge CV Tailor")
+st.title("🛡️ The 10% AI Challenge (v5.0)")
 
+# Form inputs
 with st.expander("Candidate Identity", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -122,7 +132,7 @@ with col_b:
 
 if st.button("🚀 Generate Human-Grade Content"):
     if not all([api_key, cv_sel, uploaded_cv, job_desc]):
-        st.error("Inputs missing.")
+        st.error("Missing required inputs.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
@@ -133,7 +143,11 @@ if st.button("🚀 Generate Human-Grade Content"):
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style. 
-            STRICT: Do NOT write like an AI. Do NOT use structured formatting. Avoid all AI bridge words. Act as if you are human expert writing to a human.
+            STRICT: Do NOT write like an AI. Do NOT use structured formatting.
+
+	        REFERENCE SAMPLES FOR FLOW:
+            - "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
+            - "When I in dreams behold thy fairest shade/ Whose shade in dreams doth wake the sleeping morn"
 
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
@@ -167,18 +181,25 @@ if st.button("🚀 Generate Human-Grade Content"):
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Pass 4: Chaos Scrambling
-            summary = chaos_humanizer(clean_ai_text(parts[0]))
+            # Pass 5: Entropy Scrambling
+            summary = high_entropy_scrambler(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body = chaos_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
+            cl_body = high_entropy_scrambler(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
             st.session_state.h_score = calculate_human_score(summary + " " + cl_body)
             
-            cv_data = {'name': name.upper(), 'phone': phone, 'email': email, 'linkedin': linkedin, 'github': "github.com/rbuivydas", 'summary': summary, 'skills': skills}
+            cv_data = {
+                'name': name.upper(), 'phone': phone, 'email': email, 
+                'linkedin': linkedin, 'github': "github.com/rbuivydas", 
+                'summary': summary, 'skills': skills
+            }
             st.session_state.cv_blob = render_template(os.path.join(TEMPLATE_DIR, cv_sel), cv_data)
             
             if cl_sel:
-                cl_data = {'name': name, 'company': company, 'role': role, 'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body}
+                cl_data = {
+                    'name': name, 'company': company, 'role': role, 
+                    'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body
+                }
                 st.session_state.cl_blob = render_template(os.path.join(TEMPLATE_DIR, cl_sel), cl_data)
 
 if st.session_state.cv_blob:
