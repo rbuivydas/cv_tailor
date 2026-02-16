@@ -8,38 +8,46 @@ import os
 import random
 from datetime import datetime
 
-# --- LINGUISTIC SCRAMBLER (Pass 2) ---
-def bypass_scrambler(text):
+# --- PASS 3: LINGUISTIC FRICTION & PUNCTUATION SCRAMBLER ---
+def manual_humanizer(text):
     """
-    Manually disrupts AI probability patterns to bypass detectors.
-    Swaps robotic transitions for natural human speech rhythms.
+    Manually disrupts the robotic flow of AI by:
+    1. Swapping high-probability transition words.
+    2. Randomly introducing semicolons/dashes to vary rhythm (Burstiness).
+    3. Breaking 'perfect' grammar patterns.
     """
     if not text: return ""
     
-    human_map = {
+    # IT Grit replacements
+    replacements = {
         "furthermore": "also,",
-        "moreover": "on top of that,",
+        "moreover": "what's more,",
         "in addition": "plus,",
-        "consequently": "essentially,",
-        "demonstrate": "showcase",
-        "utilize": "work with",
+        "consequently": "so basically,",
+        "demonstrate": "show",
+        "utilize": "use",
         "possess": "have",
         "highly motivated": "keen",
         "testament to": "proof of",
         "committed to": "focused on",
         "pivotal": "crucial",
-        "underscores": "highlights",
-        "ensure": "make sure",
-        "passionate about": "really interested in",
-        "extensive experience": "solid background"
+        "underscores": "hits on",
+        "extensive": "deep",
+        "seeking to": "looking to"
     }
+    for ai_word, human_word in replacements.items():
+        text = re.sub(rf'\b{ai_word}\b', human_word, text, flags=re.IGNORECASE)
     
-    for bot, human in human_map.items():
-        text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
+    # PASS: Punctuation Scrambler (Disrupts probability maps)
+    # Replaces some commas with semicolons or em-dashes randomly
+    text_list = text.split(". ")
+    scrambled = []
+    for sentence in text_list:
+        if len(sentence.split()) > 10 and random.random() > 0.7:
+            sentence = sentence.replace(", ", " — ", 1)
+        scrambled.append(sentence)
     
-    # Intentional 'Burstiness': Break a few sentences to vary rhythm
-    # Replaces some periods with a more conversational flow
-    return text.strip()
+    return ". ".join(scrambled).strip()
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
@@ -51,12 +59,12 @@ def render_template(template_input, data_map):
     return output_stream
 
 def clean_ai_text(text):
-    text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(PART|SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
+    text = re.sub(r'(?i)^(\d+\.\s*)?(\[)?(SUMMARY|SKILLS|SECTION|ITEM|OVERVIEW|COVER LETTER|LETTER|BODY)(\])?[:\- \t]*', '', text.strip())
     text = re.sub(r'[\*\^#]', '', text)
     return text.strip()
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="Humanised Career Architect", layout="wide")
+st.set_page_config(page_title="Human-Grade Career Architect", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
@@ -69,24 +77,26 @@ if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("1. Settings")
-    api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
-    
-    cv_mode = st.radio("CV Template Source", ["Folder", "Manual Upload"])
-    if cv_mode == "Folder" and available_templates:
-        cv_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CV Template", available_templates))
+    st.header("1. API & Templates")
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
     else:
-        cv_template_source = st.file_uploader("Upload CV Template (.docx)", type="docx", key="cv_manual")
+        api_key = st.text_input("Gemini API Key", type="password")
 
-    cl_mode = st.radio("Cover Letter Source", ["Folder", "Manual Upload"])
-    if cl_mode == "Folder" and available_templates:
-        cl_template_source = os.path.join(TEMPLATE_DIR, st.selectbox("Select CL Template", available_templates))
+    st.subheader("Template Selection")
+    cv_mode = st.radio("CV Template", ["Folder", "Manual"])
+    if cv_mode == "Folder" and available_templates:
+        cv_selection = st.selectbox("Select CV", available_templates)
+        cv_template_source = os.path.join(TEMPLATE_DIR, cv_selection)
     else:
-        cl_template_source = st.file_uploader("Upload CL Template (.docx)", type="docx", key="cl_manual")
-    
-    if st.button("🗑️ Reset Application"):
-        for key in list(st.session_state.keys()): del st.session_state[key]
-        st.rerun()
+        cv_template_source = st.file_uploader("Upload CV (.docx)", type="docx", key="cv_manual")
+
+    cl_mode = st.radio("CL Template", ["Folder", "Manual"])
+    if cl_mode == "Folder" and available_templates:
+        cl_selection = st.selectbox("Select CL", available_templates)
+        cl_template_source = os.path.join(TEMPLATE_DIR, cl_selection)
+    else:
+        cl_template_source = st.file_uploader("Upload CL (.docx)", type="docx", key="cl_manual")
 
 st.title("💼 Undetectable AI CV Tailor")
 
@@ -117,7 +127,31 @@ if st.button("🚀 Generate Humanised Documents"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Paraphrasing for human-like flow..."):
+        with st.spinner("Applying Advanced Linguistic Chaos..."):
+            prompt = f"""
+            Act as a British IT Contractor. I need a CV summary and cover letter for {role} at {company}.
+            
+            STYLE REFERENCE (Mimic this Perplexity and Burstiness):
+            Sample 1: "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
+            Sample 2: "When I in dreams behold thy fairest shade/ Whose shade in dreams doth wake the sleeping morn"
+            
+            WRITING RULES:
+            1. BURSTINESS: Mix extremely short sentences with long, non-linear technical explanations.
+            2. PERPLEXITY: Use high-level industry terminology. AVOID AI cliches (furthermore, tapestry, etc).
+            3. VOICE: 1st person. Start with a specific technical challenge or accomplishment.
+            4. BRITISH ENGLISH: specialised, honours, programme.
+
+            FORMAT (4 parts separated by '==='):
+            1. Summary: No title. Natural prose.
+            2. Skills: Comma-list.
+            3. Letter: 1st person narrative.
+            4. Analysis.
+
+            CV: {cv_raw_text}
+            JOB: {job_desc}
+            """
+
+            with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {role} role at {company}. 
@@ -135,9 +169,9 @@ if st.button("🚀 Generate Humanised Documents"):
             - NO AI CLICHES: Never use 'tapestry', 'passion', 'highly motivated', or 'comprehensive'.
             - Start the summary with a specific accomplishment, not a general statement.
             
-            DIRECTIONS FOR HUMAN-LIKE FLOW:
-            1. Use 'Burstiness': Vary sentence lengths significantly.
-            2. Use 'Perplexity': Use a rich, specific vocabulary but avoid AI cliches like 'tapestry', 'unleash', or 'delve'.
+            STRICT DIRECTIONS FOR HUMAN-LIKE FLOW:
+            1. BURSTINESS: Mix extremely short sentences with long, non-linear technical explanations.
+            2. PERPLEXITY: Use high-level industry terminology. AVOID AI cliches (furthermore, tapestry, etc).
             3. Write in FIRST PERSON. Sound confident but not robotic.
             4. Use British English (honours, specialised, programme).
 
@@ -157,10 +191,9 @@ if st.button("🚀 Generate Humanised Documents"):
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Applying Pass 2 (Manual Scrambler)
-            summary = bypass_scrambler(clean_ai_text(parts[0]))
+            summary = manual_humanizer(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body = bypass_scrambler(clean_ai_text(parts[2])) if len(parts) > 2 else ""
+            cl_body = manual_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
             cv_data = {
                 'name': name.upper(), 'phone': phone, 'email': email, 
