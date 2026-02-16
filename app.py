@@ -127,29 +127,6 @@ if st.button("🚀 Generate Humanised Documents"):
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
-        with st.spinner("Applying Advanced Linguistic Chaos..."):
-            prompt = f"""
-            Act as a British IT Contractor. I need a CV summary and cover letter for {role} at {company}.
-            
-            STYLE REFERENCE (Mimic this Perplexity and Burstiness):
-            Sample 1: "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
-            Sample 2: "When I in dreams behold thy fairest shade/ Whose shade in dreams doth wake the sleeping morn"
-            
-            WRITING RULES:
-            1. BURSTINESS: Mix extremely short sentences with long, non-linear technical explanations.
-            2. PERPLEXITY: Use high-level industry terminology. AVOID AI cliches (furthermore, tapestry, etc).
-            3. VOICE: 1st person. Start with a specific technical challenge or accomplishment.
-            4. BRITISH ENGLISH: specialised, honours, programme.
-
-            FORMAT (4 parts separated by '==='):
-            1. Summary: No title. Natural prose.
-            2. Skills: Comma-list.
-            3. Letter: 1st person narrative.
-            4. Analysis.
-
-            CV: {cv_raw_text}
-            JOB: {job_desc}
-            """
 
             with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
