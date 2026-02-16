@@ -82,6 +82,9 @@ if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
 if 'human_score' not in st.session_state: st.session_state.human_score = 0
 
+cv_template_source = None
+cl_template_source = None
+
 # Template Selection
 TEMPLATE_DIR = "templates"
 if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
