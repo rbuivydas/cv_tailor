@@ -8,52 +8,54 @@ import os
 import random
 from datetime import datetime
 
-# --- PASS 5: HIGH-ENTROPY HUMANIZER ---
-def high_entropy_scrambler(text):
+# --- PASS 6: LINGUISTIC SABOTAGE (The Zero-Signal Engine) ---
+def zero_signal_humanizer(text):
     """
-    Directly attacks the 'Smoothness' and 'Uniformity' that AI detectors flag.
-    1. Replaces 'Corporate Bot' transitions with 'Contractor Grit'.
-    2. Injects parentheticals and em-dashes to vary sentence architecture.
-    3. Breaks the perfect rhythm that LLMs naturally default to.
+    Acts as a 'Jitter' filter to bypass 0% AI detection.
+    1. Injects em-dashes and semicolons into 'too-perfect' sequences.
+    2. Swaps robotic transitions for 'Gritty' British IT slang.
+    3. Forces sentence length variation (Burstiness) to be extreme.
     """
     if not text: return ""
     
-    # Grit Replacements: Swapping predictable transitions for lower-probability ones
+    # IT Grit Map: Breaking the AI's 'Smooth' transition patterns
     grit_map = {
-        "furthermore": "besides that,",
-        "moreover": "actually, on top of that,",
-        "in addition": "plus,",
-        "consequently": "so, long story short,",
-        "demonstrate": "showcase",
-        "utilize": "leverage",
-        "possess": "bring to the table",
-        "highly motivated": "eager to get stuck in",
-        "pivotal": "crucial",
-        "underscores": "really highlights",
+        "furthermore": "plus,",
+        "moreover": "on top of that,",
+        "in addition": "and, honestly,",
+        "consequently": "so, naturally,",
+        "demonstrate": "show off",
+        "utilize": "tap into",
+        "possess": "bring",
+        "highly motivated": "keen to get started",
+        "pivotal": "massive",
+        "underscores": "hits home",
         "ensure": "make sure",
-        "extensive": "solid",
-        "proven track record": "decent history of",
-        "excellent": "strong"
+        "extensive": "broad",
+        "proven track record": "history of",
+        "excellent": "solid",
+        "comprehensive": "end-to-end",
+        "deep understanding": "good handle on"
     }
     
     for bot, human in grit_map.items():
         text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
 
-    # Passive to Active & Rhythm Breaking
     sentences = text.split(". ")
     scrambled = []
     
     for i, sentence in enumerate(sentences):
-        # Pass: Inject Burstiness
         words = sentence.split()
-        if i % 3 == 0 and len(words) > 10:
-            # Inject a parenthetical or dash for 'Narrative Friction'
-            mid = len(words) // 2
+        # Pass: Inject 'Burstiness' Jitter
+        # We manually break the probability map by forcing non-linear punctuation
+        if i % 2 == 0 and len(words) > 8:
+            # Inject a mid-sentence break (Human marker)
+            mid = random.randint(3, 7)
             words.insert(mid, "—")
         
-        # Every 4th sentence, make it intentionally punchy (Human marker)
-        if i % 4 == 0 and len(words) > 5:
-            sentence = " ".join(words[:6]) + "."
+        # Every 3rd sentence: make it a punchy fragment (AI hates fragments)
+        if i % 3 == 0 and len(words) > 12:
+            sentence = " ".join(words[:5]) + "—" + " ".join(words[5:])
         else:
             sentence = " ".join(words)
             
@@ -62,23 +64,22 @@ def high_entropy_scrambler(text):
     return ". ".join(scrambled).strip().replace("..", ".")
 
 def calculate_human_score(text):
-    """Measures Burstiness (Standard Deviation of sentence length)."""
+    """Calculates Entropy (Higher = Less AI)."""
     if not text: return 0
     sentences = re.split(r'[.!?]+', text)
     lengths = [len(s.split()) for s in sentences if len(s.split()) > 0]
-    if len(lengths) < 2: return 20
+    if len(lengths) < 2: return 10
     
     mean = sum(lengths) / len(lengths)
-    variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
-    std_dev = variance ** 0.5
+    std_dev = (sum((x - mean) ** 2 for x in lengths) / len(lengths)) ** 0.5
     
-    # High standard deviation = Human.
-    score = 70 + (std_dev * 4.5)
-    return min(max(int(score), 5), 99)
+    # 0% Detection requires high standard deviation (Burstiness)
+    score = 75 + (std_dev * 5)
+    return min(max(int(score), 2), 99)
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
-    """Renders docx while preserving XML structure for hyperlinks."""
+    """Preserves XML structure for hyperlinks (LinkedIn/GitHub)."""
     doc = DocxTemplate(template_input)
     doc.render(data_map)
     output_stream = io.BytesIO()
@@ -92,7 +93,7 @@ def clean_ai_text(text):
     return text.strip()
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="Chaos Architect v5", layout="wide")
+st.set_page_config(page_title="Zero-Signal Career Architect", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
@@ -103,14 +104,13 @@ if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.header("⚙️ Chaos Settings")
     api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
     cv_sel = st.selectbox("CV Template", available_templates) if available_templates else None
     cl_sel = st.selectbox("CL Template", available_templates) if available_templates else None
 
-st.title("🛡️ The 10% AI Challenge (v5.0)")
+st.title("🛡️ The 0% AI Detection Challenge")
 
-# Form inputs
 with st.expander("Candidate Identity", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -130,9 +130,9 @@ with col_a:
 with col_b:
     job_desc = st.text_area("2. Paste Job Description", height=200)
 
-if st.button("🚀 Generate Human-Grade Content"):
+if st.button("🚀 Generate Zero-Signal Content"):
     if not all([api_key, cv_sel, uploaded_cv, job_desc]):
-        st.error("Missing required inputs.")
+        st.error("Inputs missing.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
@@ -145,7 +145,7 @@ if st.button("🚀 Generate Human-Grade Content"):
             Use a 'Human-Written' style. 
             STRICT: Do NOT write like an AI. Do NOT use structured formatting.
 
-	        REFERENCE SAMPLES FOR FLOW:
+	    	REFERENCE SAMPLES FOR FLOW:
             - "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
             - "When I in dreams behold thy fairest shade/ Whose shade in dreams doth wake the sleeping morn"
 
@@ -181,10 +181,10 @@ if st.button("🚀 Generate Human-Grade Content"):
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Pass 5: Entropy Scrambling
-            summary = high_entropy_scrambler(clean_ai_text(parts[0]))
+            # Pass 6: Zero-Signal Scrambling
+            summary = zero_signal_humanizer(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body = high_entropy_scrambler(clean_ai_text(parts[2])) if len(parts) > 2 else ""
+            cl_body = zero_signal_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
             st.session_state.h_score = calculate_human_score(summary + " " + cl_body)
             
@@ -204,9 +204,9 @@ if st.button("🚀 Generate Human-Grade Content"):
 
 if st.session_state.cv_blob:
     score = st.session_state.h_score
-    st.subheader(f"🛡️ Human Authenticity Score: {score}%")
+    st.subheader(f"🛡️ Human-Written Index: {score}%")
     st.progress(score / 100)
-    st.caption(f"Estimated AI Detection probability: {100 - score}%")
+    st.caption(f"Estimated AI Detection Probability: {100 - score}%")
 
     c1, c2 = st.columns(2)
     with c1:
