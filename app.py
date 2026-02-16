@@ -128,7 +128,7 @@ if st.button("🚀 Generate Humanised Documents"):
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
 
 
-            with st.spinner("Paraphrasing for human-like flow..."):
+        with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
             Act as a Senior Resume Writer and ATS Expert. 
             Create content for {name} applying for the {role} role at {company}. 
