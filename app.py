@@ -124,6 +124,12 @@ if st.button("🚀 Generate Humanised CV"):
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
             Localise all terminology for the UK job market.
+
+	        STRICT Linguistic Requirements to Bypass AI Detection:
+            - HIGH BURSTINESS: Mix short, punchy sentences with longer, descriptive ones. 
+            - HIGH PERPLEXITY: Use industry-specific jargon naturally. 
+            - PERSONAL VOICE: Use 'I' and 'My'. Avoid generic AI opening phrases like 'With a solid grounding...'.
+            - NO CLICHES: Do not use 'tapestry', 'passion', 'highly motivated', or 'proven track record'.
             
             DIRECTIONS FOR HUMAN-LIKE FLOW:
             1. Use 'Burstiness': Vary sentence lengths significantly.
