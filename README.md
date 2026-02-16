@@ -57,11 +57,7 @@ cv_tailor/
 ├── templates/ # Reusable Word templates
 │ ├── cv_template.docx # CV template with placeholders
 │ └── cover_letter_template.docx # Cover letter template
-│
-├── .streamlit/
-│ ├── secrets.toml # Gemini API key (not committed)
-│ └── config.toml # Streamlit UI configuration
-│
+|
 ├── assets/ # Optional static assets
 │ ├── screenshots/ # App screenshots for README
 │ └── icons/ # Logos or UI icons
