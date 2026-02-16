@@ -8,78 +8,49 @@ import os
 import random
 from datetime import datetime
 
-# --- PASS 6: LINGUISTIC SABOTAGE (The Zero-Signal Engine) ---
-def zero_signal_humanizer(text):
+# --- PASS 3: LINGUISTIC FRICTION & PUNCTUATION SCRAMBLER ---
+def manual_humanizer(text):
     """
-    Acts as a 'Jitter' filter to bypass 0% AI detection.
-    1. Injects em-dashes and semicolons into 'too-perfect' sequences.
-    2. Swaps robotic transitions for 'Gritty' British IT slang.
-    3. Forces sentence length variation (Burstiness) to be extreme.
+    Manually disrupts the robotic flow of AI by:
+    1. Swapping high-probability transition words.
+    2. Randomly introducing semicolons/dashes to vary rhythm (Burstiness).
+    3. Breaking 'perfect' grammar patterns.
     """
     if not text: return ""
     
-    # IT Grit Map: Breaking the AI's 'Smooth' transition patterns
-    grit_map = {
-        "furthermore": "plus,",
-        "moreover": "on top of that,",
-        "in addition": "and, honestly,",
-        "consequently": "so, naturally,",
-        "demonstrate": "show off",
-        "utilize": "tap into",
-        "possess": "bring",
-        "highly motivated": "keen to get started",
-        "pivotal": "massive",
-        "underscores": "hits home",
-        "ensure": "make sure",
-        "extensive": "broad",
-        "proven track record": "history of",
-        "excellent": "solid",
-        "comprehensive": "end-to-end",
-        "deep understanding": "good handle on"
+    # IT Grit replacements
+    replacements = {
+        "furthermore": "also,",
+        "moreover": "what's more,",
+        "in addition": "plus,",
+        "consequently": "so basically,",
+        "demonstrate": "show",
+        "utilize": "use",
+        "possess": "have",
+        "highly motivated": "keen",
+        "testament to": "proof of",
+        "committed to": "focused on",
+        "pivotal": "crucial",
+        "underscores": "hits on",
+        "extensive": "deep",
+        "seeking to": "looking to"
     }
+    for ai_word, human_word in replacements.items():
+        text = re.sub(rf'\b{ai_word}\b', human_word, text, flags=re.IGNORECASE)
     
-    for bot, human in grit_map.items():
-        text = re.sub(rf'\b{bot}\b', human, text, flags=re.IGNORECASE)
-
-    sentences = text.split(". ")
+    # PASS: Punctuation Scrambler (Disrupts probability maps)
+    # Replaces some commas with semicolons or em-dashes randomly
+    text_list = text.split(". ")
     scrambled = []
-    
-    for i, sentence in enumerate(sentences):
-        words = sentence.split()
-        # Pass: Inject 'Burstiness' Jitter
-        # We manually break the probability map by forcing non-linear punctuation
-        if i % 2 == 0 and len(words) > 8:
-            # Inject a mid-sentence break (Human marker)
-            mid = random.randint(3, 7)
-            words.insert(mid, "—")
-        
-        # Every 3rd sentence: make it a punchy fragment (AI hates fragments)
-        if i % 3 == 0 and len(words) > 12:
-            sentence = " ".join(words[:5]) + "—" + " ".join(words[5:])
-        else:
-            sentence = " ".join(words)
-            
+    for sentence in text_list:
+        if len(sentence.split()) > 10 and random.random() > 0.7:
+            sentence = sentence.replace(", ", " — ", 1)
         scrambled.append(sentence)
-        
-    return ". ".join(scrambled).strip().replace("..", ".")
-
-def calculate_human_score(text):
-    """Calculates Entropy (Higher = Less AI)."""
-    if not text: return 0
-    sentences = re.split(r'[.!?]+', text)
-    lengths = [len(s.split()) for s in sentences if len(s.split()) > 0]
-    if len(lengths) < 2: return 10
     
-    mean = sum(lengths) / len(lengths)
-    std_dev = (sum((x - mean) ** 2 for x in lengths) / len(lengths)) ** 0.5
-    
-    # 0% Detection requires high standard deviation (Burstiness)
-    score = 75 + (std_dev * 5)
-    return min(max(int(score), 2), 99)
+    return ". ".join(scrambled).strip()
 
 # --- DOCUMENT GENERATION ENGINE ---
 def render_template(template_input, data_map):
-    """Preserves XML structure for hyperlinks (LinkedIn/GitHub)."""
     doc = DocxTemplate(template_input)
     doc.render(data_map)
     output_stream = io.BytesIO()
@@ -93,25 +64,43 @@ def clean_ai_text(text):
     return text.strip()
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="Zero-Signal Career Architect", layout="wide")
+st.set_page_config(page_title="Human-Grade Career Architect", layout="wide")
 
 if 'cv_blob' not in st.session_state: st.session_state.cv_blob = None
 if 'cl_blob' not in st.session_state: st.session_state.cl_blob = None
-if 'h_score' not in st.session_state: st.session_state.h_score = 0
+
+cv_template_source = None
+cl_template_source = None
 
 TEMPLATE_DIR = "templates"
 if not os.path.exists(TEMPLATE_DIR): os.makedirs(TEMPLATE_DIR)
 available_templates = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith('.docx')]
 
 with st.sidebar:
-    st.header("⚙️ Chaos Settings")
-    api_key = st.secrets.get("GEMINI_API_KEY") or st.text_input("Gemini API Key", type="password")
-    cv_sel = st.selectbox("CV Template", available_templates) if available_templates else None
-    cl_sel = st.selectbox("CL Template", available_templates) if available_templates else None
+    st.header("1. API & Templates")
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    else:
+        api_key = st.text_input("Gemini API Key", type="password")
 
-st.title("🛡️ The 0% AI Detection Challenge")
+    st.subheader("Template Selection")
+    cv_mode = st.radio("CV Template", ["Folder", "Manual"])
+    if cv_mode == "Folder" and available_templates:
+        cv_selection = st.selectbox("Select CV", available_templates)
+        cv_template_source = os.path.join(TEMPLATE_DIR, cv_selection)
+    else:
+        cv_template_source = st.file_uploader("Upload CV (.docx)", type="docx", key="cv_manual")
 
-with st.expander("Candidate Identity", expanded=True):
+    cl_mode = st.radio("CL Template", ["Folder", "Manual"])
+    if cl_mode == "Folder" and available_templates:
+        cl_selection = st.selectbox("Select CL", available_templates)
+        cl_template_source = os.path.join(TEMPLATE_DIR, cl_selection)
+    else:
+        cl_template_source = st.file_uploader("Upload CL (.docx)", type="docx", key="cl_manual")
+
+st.title("💼 Undetectable AI CV Tailor")
+
+with st.expander("Candidate Details", expanded=True):
     c1, c2, c3 = st.columns(3)
     with c1:
         name = st.text_input("Full Name", "Rimantas Buivydas")
@@ -126,17 +115,18 @@ with st.expander("Candidate Identity", expanded=True):
 st.markdown("---")
 col_a, col_b = st.columns(2)
 with col_a:
-    uploaded_cv = st.file_uploader("Upload Master CV (PDF)", type="pdf")
+    uploaded_cv = st.file_uploader("Upload Main CV (PDF)", type="pdf")
 with col_b:
     job_desc = st.text_area("2. Paste Job Description", height=200)
 
-if st.button("🚀 Generate Zero-Signal Content"):
-    if not all([api_key, cv_sel, uploaded_cv, job_desc]):
-        st.error("Inputs missing.")
+if st.button("🚀 Generate Humanised Documents"):
+    if not all([api_key, cv_template_source, uploaded_cv, job_desc]):
+        st.error("Missing inputs.")
     else:
         client = genai.Client(api_key=api_key)
         pdf_reader = PyPDF2.PdfReader(uploaded_cv)
         cv_raw_text = " ".join([p.extract_text() for p in pdf_reader.pages])
+
 
         with st.spinner("Paraphrasing for human-like flow..."):
             prompt = f"""
@@ -144,10 +134,6 @@ if st.button("🚀 Generate Zero-Signal Content"):
             Create content for {name} applying for the {role} role at {company}. 
             Use a 'Human-Written' style. 
             STRICT: Do NOT write like an AI. Do NOT use structured formatting.
-
-	    	REFERENCE SAMPLES FOR FLOW:
-            - "They linger in the assumptions that subtend the production and consumption of text... what forms of 'human' are authorized by the algorithm?"
-            - "When I in dreams behold thy fairest shade/ Whose shade in dreams doth wake the sleeping morn"
 
             STRICT LANGUAGE RULE: 
             Use BRITISH ENGLISH throughout (e.g., 'honours', 'specialised', 'programme', 'organise', 'centre'). 
@@ -177,40 +163,34 @@ if st.button("🚀 Generate Zero-Signal Content"):
             CV: {cv_raw_text}
             JOB: {job_desc}
             """
+
             
             response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
             parts = response.text.split("===")
             
-            # Pass 6: Zero-Signal Scrambling
-            summary = zero_signal_humanizer(clean_ai_text(parts[0]))
+            summary = manual_humanizer(clean_ai_text(parts[0]))
             skills = clean_ai_text(parts[1]) if len(parts) > 1 else ""
-            cl_body = zero_signal_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
-            
-            st.session_state.h_score = calculate_human_score(summary + " " + cl_body)
+            cl_body = manual_humanizer(clean_ai_text(parts[2])) if len(parts) > 2 else ""
             
             cv_data = {
                 'name': name.upper(), 'phone': phone, 'email': email, 
                 'linkedin': linkedin, 'github': "github.com/rbuivydas", 
                 'summary': summary, 'skills': skills
             }
-            st.session_state.cv_blob = render_template(os.path.join(TEMPLATE_DIR, cv_sel), cv_data)
+            st.session_state.cv_blob = render_template(cv_template_source, cv_data)
             
-            if cl_sel:
+            if cl_template_source:
                 cl_data = {
                     'name': name, 'company': company, 'role': role, 
                     'date': datetime.now().strftime("%d %B %Y"), 'letter_body': cl_body
                 }
-                st.session_state.cl_blob = render_template(os.path.join(TEMPLATE_DIR, cl_sel), cl_data)
+                st.session_state.cl_blob = render_template(cl_template_source, cl_data)
 
 if st.session_state.cv_blob:
-    score = st.session_state.h_score
-    st.subheader(f"🛡️ Human-Written Index: {score}%")
-    st.progress(score / 100)
-    st.caption(f"Estimated AI Detection Probability: {100 - score}%")
-
+    st.success("Human-authentic documents generated!")
     c1, c2 = st.columns(2)
     with c1:
-        st.download_button("📥 CV (.docx)", data=st.session_state.cv_blob, file_name=f"{name}_CV.docx")
+        st.download_button("📥 Download CV", data=st.session_state.cv_blob, file_name=f"{name}_{company}_CV.docx")
     if st.session_state.cl_blob:
         with c2:
-            st.download_button("📥 Letter (.docx)", data=st.session_state.cl_blob, file_name=f"{name}_Letter.docx")
+            st.download_button("📥 Download Cover Letter", data=st.session_state.cl_blob, file_name=f"{name}_{company}_Letter.docx")
